@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using EventStore.Core.Data;
 using EventStore.Core.Tests.Integration;
@@ -13,6 +12,7 @@ using NUnit.Framework;
 namespace EventStore.Core.Tests.Http.Cluster {
 	[TestFixture]
 	[Category("LongRunning")]
+	// ReSharper disable once InconsistentNaming
 	public class when_requesting_from_replica : specification_with_cluster {
 		private const string TestStream = "test-stream";
 		private IPEndPoint _replicaEndPoint;
@@ -34,10 +34,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 			var response = await PostEvent(_replicaEndPoint, path, requireMaster: false);
 			Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
 			var masterIndex = GetMaster().Db.Config.IndexCheckpoint.Read();
-			var replicas = GetReplicas();
-			AssertEx.IsOrBecomesTrue(()=> replicas[0].Db.Config.IndexCheckpoint.Read() == masterIndex);
-			AssertEx.IsOrBecomesTrue(()=> replicas[1].Db.Config.IndexCheckpoint.Read() == masterIndex);
-
+			AssertEx.IsOrBecomesTrue(()=> replica.Db.Config.IndexCheckpoint.Read() == masterIndex);
 		}
 
 		public override Task TestFixtureTearDown() {
@@ -106,6 +103,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_deleting_with_requires_master() {
 			var path = $"streams/{TestStream}";
+			// ReSharper disable once RedundantArgumentDefaultValue
 			var response = await DeleteStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
