@@ -28,28 +28,28 @@ namespace EventStore.Core.Tests.Replication.ReadOnlyReplica {
 		protected override IEventStoreConnection CreateConnection() {
 			var settings = ConnectionSettings.Create()
 				.PerformOnAnyNode();
-			return EventStoreConnection.Create(settings, _nodes[2].ExternalTcpEndPoint);
+			return EventStoreConnection.Create(settings, Nodes[2].ExternalTcpEndPoint);
 		}
 
 		[Test]
 		public async Task append_to_stream_should_fail_with_not_supported_exception() {
 			const string stream = "append_to_stream_should_fail_with_not_supported_exception";
 			await AssertEx.ThrowsAsync<OperationNotSupportedException>(
-				() => _conn.AppendToStreamAsync(stream, ExpectedVersion.Any, TestEvent.NewTestEvent()));
+				() => Conn.AppendToStreamAsync(stream, ExpectedVersion.Any, TestEvent.NewTestEvent()));
 		}
 
 		[Test]
 		public async Task delete_stream_should_fail_with_not_supported_exception() {
 			const string stream = "delete_stream_should_fail_with_not_supported_exception";
 			await AssertEx.ThrowsAsync<OperationNotSupportedException>(() =>
-				_conn.DeleteStreamAsync(stream, ExpectedVersion.Any));
+				Conn.DeleteStreamAsync(stream, ExpectedVersion.Any));
 		}
 
 		[Test]
 		public async Task start_transaction_should_fail_with_not_supported_exception() {
 			const string stream = "start_transaction_should_fail_with_not_supported_exception";
 			await AssertEx.ThrowsAsync<OperationNotSupportedException>(() =>
-				_conn.StartTransactionAsync(stream, ExpectedVersion.Any));
+				Conn.StartTransactionAsync(stream, ExpectedVersion.Any));
 		}
 	}
 }

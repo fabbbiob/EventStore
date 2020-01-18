@@ -2,7 +2,6 @@
 using System.Net;
 using EventStore.ClientAPI;
 using EventStore.ClientAPI.SystemData;
-using EventStore.Core.Bus;
 using EventStore.Core.Tests.Helpers;
 using NUnit.Framework;
 using System.Collections.Generic;
@@ -11,13 +10,14 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace EventStore.Core.Tests.Integration {
+	// ReSharper disable once InconsistentNaming
 	public class specification_with_cluster : SpecificationWithDirectoryPerTestFixture {
-		protected MiniClusterNode[] _nodes = new MiniClusterNode[3];
-		protected Endpoints[] _nodeEndpoints = new Endpoints[3];
-		protected IEventStoreConnection _conn;
-		protected UserCredentials _admin = DefaultData.AdminCredentials;
+		protected MiniClusterNode[] Nodes = new MiniClusterNode[3];
+		protected Endpoints[] NodeEndpoints = new Endpoints[3];
+		protected IEventStoreConnection Conn;
+		protected UserCredentials Admin = DefaultData.AdminCredentials;
 
-		protected Dictionary<int, Func<bool, MiniClusterNode>> _nodeCreationFactory =
+		protected Dictionary<int, Func<bool, MiniClusterNode>> NodeCreationFactory =
 			new Dictionary<int, Func<bool, MiniClusterNode>>();
 
 
@@ -94,16 +94,16 @@ namespace EventStore.Core.Tests.Integration {
 		public override async Task TestFixtureSetUp() {
 			await base.TestFixtureSetUp();
 
-			_nodeEndpoints[0] = new Endpoints();
-			_nodeEndpoints[1] = new Endpoints();
-			_nodeEndpoints[2] = new Endpoints();
+			NodeEndpoints[0] = new Endpoints();
+			NodeEndpoints[1] = new Endpoints();
+			NodeEndpoints[2] = new Endpoints();
 
-			_nodeEndpoints[0].DisposeSockets();
-			_nodeEndpoints[1].DisposeSockets();
-			_nodeEndpoints[2].DisposeSockets();
+			NodeEndpoints[0].DisposeSockets();
+			NodeEndpoints[1].DisposeSockets();
+			NodeEndpoints[2].DisposeSockets();
 
-			var duplicates = _nodeEndpoints[0].Ports().Concat(_nodeEndpoints[1].Ports())
-				.Concat(_nodeEndpoints[2].Ports())
+			var duplicates = NodeEndpoints[0].Ports().Concat(NodeEndpoints[1].Ports())
+				.Concat(NodeEndpoints[2].Ports())
 				.GroupBy(x => x)
 				.Where(g => g.Count() > 1)
 				.Select(x => x.Key)
@@ -111,36 +111,36 @@ namespace EventStore.Core.Tests.Integration {
 
 			Assert.IsEmpty(duplicates);
 
-			_nodeCreationFactory.Add(0, wait => CreateNode(0,
-				_nodeEndpoints[0], new[] {_nodeEndpoints[1].InternalHttp, _nodeEndpoints[2].InternalHttp},
+			NodeCreationFactory.Add(0, wait => CreateNode(0,
+				NodeEndpoints[0], new[] {NodeEndpoints[1].InternalHttp, NodeEndpoints[2].InternalHttp},
 				wait));
-			_nodeCreationFactory.Add(1, wait => CreateNode(1,
-				_nodeEndpoints[1], new[] {_nodeEndpoints[0].InternalHttp, _nodeEndpoints[2].InternalHttp},
+			NodeCreationFactory.Add(1, wait => CreateNode(1,
+				NodeEndpoints[1], new[] {NodeEndpoints[0].InternalHttp, NodeEndpoints[2].InternalHttp},
 				wait));
-			_nodeCreationFactory.Add(2, wait => CreateNode(2,
-				_nodeEndpoints[2], new[] {_nodeEndpoints[0].InternalHttp, _nodeEndpoints[1].InternalHttp},
+			NodeCreationFactory.Add(2, wait => CreateNode(2,
+				NodeEndpoints[2], new[] {NodeEndpoints[0].InternalHttp, NodeEndpoints[1].InternalHttp},
 				wait));
 
-			_nodes[0] = _nodeCreationFactory[0](true);
-			_nodes[1] = _nodeCreationFactory[1](true);
-			_nodes[2] = _nodeCreationFactory[2](true);
+			Nodes[0] = NodeCreationFactory[0](true);
+			Nodes[1] = NodeCreationFactory[1](true);
+			Nodes[2] = NodeCreationFactory[2](true);
 
 			BeforeNodesStart();
 
-			_nodes[0].Start();
-			_nodes[1].Start();
-			_nodes[2].Start();
+			Nodes[0].Start();
+			Nodes[1].Start();
+			Nodes[2].Start();
 
-			await Task.WhenAll(_nodes.Select(x => x.Started)).WithTimeout(TimeSpan.FromSeconds(30));
+			await Task.WhenAll(Nodes.Select(x => x.Started)).WithTimeout(TimeSpan.FromSeconds(30));
 
-			_conn = CreateConnection();
-			await _conn.ConnectAsync();
+			Conn = CreateConnection();
+			await Conn.ConnectAsync();
 
 			await Given();
 		}
 
 		protected virtual IEventStoreConnection CreateConnection() {
-			return EventStoreConnection.Create(_nodes[0].ExternalTcpEndPoint);
+			return EventStoreConnection.Create(Nodes[0].ExternalTcpEndPoint);
 		}
 
 		protected virtual void BeforeNodesStart() {
@@ -149,7 +149,7 @@ namespace EventStore.Core.Tests.Integration {
 		protected virtual Task Given() => Task.CompletedTask;
 
 		protected Task ShutdownNode(int nodeNum) {
-			return _nodes[nodeNum].Shutdown(keepDb: true);
+			return Nodes[nodeNum].Shutdown(keepDb: true);
 		}
 
 		protected virtual MiniClusterNode CreateNode(int index, Endpoints endpoints, IPEndPoint[] gossipSeeds,
@@ -164,11 +164,11 @@ namespace EventStore.Core.Tests.Integration {
 
 		[OneTimeTearDown]
 		public override async Task TestFixtureTearDown() {
-			_conn.Close();
+			Conn.Close();
 			await Task.WhenAll(
-				_nodes[0].Shutdown(),
-				_nodes[1].Shutdown(),
-				_nodes[2].Shutdown());
+				Nodes[0].Shutdown(),
+				Nodes[1].Shutdown(),
+				Nodes[2].Shutdown());
 
 			await base.TestFixtureTearDown();
 		}
@@ -177,11 +177,11 @@ namespace EventStore.Core.Tests.Integration {
 		}
 
 		protected MiniClusterNode GetMaster() {
-			return _nodes.First(x => x.NodeState == Data.VNodeState.Master);
+			return Nodes.First(x => x.NodeState == Data.VNodeState.Master);
 		}
 
-		protected MiniClusterNode[] GetSlaves() {
-			return _nodes.Where(x => x.NodeState != Data.VNodeState.Master).ToArray();
+		protected MiniClusterNode[] GetReplicas() {
+			return Nodes.Where(x => x.NodeState != Data.VNodeState.Master).ToArray();
 		}
 	}
 }

@@ -9,6 +9,7 @@ using EventStore.Core.Tests.Helpers;
 using EventStore.Core.Tests.Integration;
 using EventStore.Core.Tests.Replication.ReadStream;
 using NUnit.Framework;
+// ReSharper disable InconsistentNaming
 
 namespace EventStore.Core.Tests.Services.RequestManagement.ReadMgr {
 	[TestFixture]
@@ -21,7 +22,7 @@ namespace EventStore.Core.Tests.Services.RequestManagement.ReadMgr {
 		private MiniClusterNode _liveNode;
 
 		protected override void BeforeNodesStart() {
-			_nodes.ToList().ForEach(x =>
+			Nodes.ToList().ForEach(x =>
 				x.Node.MainBus.Subscribe(new AdHocHandler<SystemMessage.StateChangeMessage>(Handle)));
 			_expectedNumberOfRoleAssignments = new CountdownEvent(3);
 			base.BeforeNodesStart();
@@ -29,10 +30,10 @@ namespace EventStore.Core.Tests.Services.RequestManagement.ReadMgr {
 
 		private void Handle(SystemMessage.StateChangeMessage msg) {
 			switch (msg.State) {
-				case Data.VNodeState.Master:
+				case VNodeState.Master:
 					_expectedNumberOfRoleAssignments.Signal();
 					break;
-				case Data.VNodeState.Slave:
+				case VNodeState.Slave:
 					_expectedNumberOfRoleAssignments.Signal();
 					break;
 			}
@@ -44,13 +45,13 @@ namespace EventStore.Core.Tests.Services.RequestManagement.ReadMgr {
 			_liveNode = GetMaster();
 			Assert.IsNotNull(_liveNode, "Could not get master node");
 
-			var events = new Event[] { new Event(Guid.NewGuid(), "test-type", false, new byte[10], new byte[0]) };
+			var events = new [] { new Event(Guid.NewGuid(), "test-type", false, new byte[10], new byte[0]) };
 			var writeResult = ReplicationTestHelper.WriteEvent(_liveNode, events, _streamId);
 			Assert.AreEqual(OperationResult.Success, writeResult.Result);
 			_commitPosition = writeResult.CommitPosition;
-
-			var slaves = GetSlaves();
-			foreach (var s in slaves) {
+			var replicas = GetReplicas();
+			
+			foreach (var s in replicas) {
 				await ShutdownNode(s.DebugIndex);
 			}
 
@@ -60,13 +61,13 @@ namespace EventStore.Core.Tests.Services.RequestManagement.ReadMgr {
 		[Test]
 		public void should_be_able_to_read_event_from_all_forward() {
 			var readResult = ReplicationTestHelper.ReadAllEventsForward(_liveNode, _commitPosition);
-			Assert.AreEqual(1, readResult.Events.Where(x => x.OriginalStreamId == _streamId).Count());
+			Assert.AreEqual(1, readResult.Events.Count(x => x.OriginalStreamId == _streamId));
 		}
 
 		[Test]
 		public void should_be_able_to_read_event_from_all_backward() {
 			var readResult = ReplicationTestHelper.ReadAllEventsBackward(_liveNode, _commitPosition);
-			Assert.AreEqual(1, readResult.Events.Where(x => x.OriginalStreamId == _streamId).Count());
+			Assert.AreEqual(1, readResult.Events.Count(x => x.OriginalStreamId == _streamId));
 		}
 
 		[Test]

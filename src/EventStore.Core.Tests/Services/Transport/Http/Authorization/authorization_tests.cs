@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using EventStore.Common.Utils;
-using EventStore.Core.Services.Transport.Http;
 using EventStore.Core.Tests.Integration;
 using NUnit.Framework;
 
@@ -81,21 +80,22 @@ namespace EventStore.Core.Tests.Services.Transport.Http {
 		public async Task CreateUser(string username, string password) {
 			for (int trial = 1; trial <= 5; trial++) {
 				try {
-					var dataStr = string.Format("{{loginName: '{0}', fullName: '{1}', password: '{2}', groups: []}}", username, username, password);
+					var dataStr =
+						$"{{loginName: '{username}', fullName: '{username}', password: '{password}', groups: []}}";
 					var data = Helper.UTF8NoBom.GetBytes(dataStr);
 					var stream = new MemoryStream(data);
 					var content = new StreamContent(stream);
 					content.Headers.Add("Content-Type", "application/json");
 
 					var res = await _httpClients["Admin"].PostAsync(
-						string.Format("http://{0}/users/", _nodes[_masterId].ExternalHttpEndPoint),
+						$"http://{Nodes[_masterId].ExternalHttpEndPoint}/users/",
 						content
 					);
 					res.EnsureSuccessStatusCode();
 					break;
 				} catch (HttpRequestException) {
 					if (trial == 5) {
-						throw new Exception(string.Format("Error creating user: {0}", username));
+						throw new Exception($"Error creating user: {username}");
 					}
 					await Task.Delay(1000);
 				}
@@ -107,8 +107,8 @@ namespace EventStore.Core.Tests.Services.Transport.Http {
 			await base.TestFixtureSetUp();
 
 			//find the master node
-			for (int i = 0; i < _nodes.Length; i++) {
-				if (_nodes[i].NodeState == Data.VNodeState.Master) {
+			for (int i = 0; i < Nodes.Length; i++) {
+				if (Nodes[i].NodeState == Data.VNodeState.Master) {
 					_masterId = i;
 					break;
 				}
@@ -221,7 +221,7 @@ namespace EventStore.Core.Tests.Services.Transport.Http {
 			)] string httpEndpointDetails
 		) {
 			/*use the master node endpoint to avoid any redirects*/
-			var nodeEndpoint = useInternalEndpoint ? _nodes[_masterId].InternalHttpEndPoint : _nodes[_masterId].ExternalHttpEndPoint;
+			var nodeEndpoint = useInternalEndpoint ? Nodes[_masterId].InternalHttpEndPoint : Nodes[_masterId].ExternalHttpEndPoint;
 			var httpEndpointTokens = httpEndpointDetails.Split(';');
 			var endpointUrl = httpEndpointTokens[0];
 			var httpMethod = GetHttpMethod(httpEndpointTokens[1]);
@@ -232,7 +232,7 @@ namespace EventStore.Core.Tests.Services.Transport.Http {
 				return;
 			}
 
-			var url = string.Format("http://{0}{1}", nodeEndpoint, endpointUrl);
+			var url = $"http://{nodeEndpoint}{endpointUrl}";
 			var body = GetData(httpMethod, endpointUrl);
 			var contentType = httpMethod == HttpMethod.Post || httpMethod == HttpMethod.Put || httpMethod == HttpMethod.Delete ? "application/json" : null;
 			var statusCode = await SendRequest(_httpClients[userAuthorizationLevel], httpMethod, url, body, contentType);
