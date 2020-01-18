@@ -12,17 +12,17 @@ using EventStore.Core.Data;
 
 namespace EventStore.Core.Tests.Replication.ReadStream {
 	[TestFixture, Category("LongRunning")]
-	public class when_subscribed_to_stream_on_master_and_event_is_replicated_to_slaves : specification_with_cluster {
+	public class when_subscribed_to_stream_on_master_and_event_is_replicated_to_replicas : specification_with_cluster {
 		private const string _streamId = "test-stream";
 		private CountdownEvent _expectedNumberOfRoleAssignments;
 		private CountdownEvent _subscriptionsConfirmed;
 		private TestSubscription _masterSubscription;
-		private List<TestSubscription> _slaveSubscriptions;
+		private List<TestSubscription> _replicaSubscriptions;
 
 		private TimeSpan _timeout = TimeSpan.FromSeconds(5);
 
 		protected override void BeforeNodesStart() {
-			_nodes.ToList().ForEach(x =>
+			Nodes.ToList().ForEach(x =>
 				x.Node.MainBus.Subscribe(new AdHocHandler<SystemMessage.StateChangeMessage>(Handle)));
 			_expectedNumberOfRoleAssignments = new CountdownEvent(3);
 			base.BeforeNodesStart();
@@ -52,12 +52,12 @@ namespace EventStore.Core.Tests.Replication.ReadStream {
 			_masterSubscription = new TestSubscription(master, 1, _streamId, _subscriptionsConfirmed);
 			_masterSubscription.CreateSubscription();
 
-			_slaveSubscriptions = new List<TestSubscription>();
-			var slaves = GetSlaves();
-			foreach (var s in slaves) {
-				var slaveSubscription = new TestSubscription(s, 1, _streamId, _subscriptionsConfirmed);
-				_slaveSubscriptions.Add(slaveSubscription);
-				slaveSubscription.CreateSubscription();
+			_replicaSubscriptions = new List<TestSubscription>();
+			var replica = GetReplicas();
+			foreach (var s in replica) {
+				var replicaSubscription = new TestSubscription(s, 1, _streamId, _subscriptionsConfirmed);
+				_replicaSubscriptions.Add(replicaSubscription);
+				replicaSubscription.CreateSubscription();
 			}
 
 			if (!_subscriptionsConfirmed.Wait(_timeout)) {
@@ -67,7 +67,10 @@ namespace EventStore.Core.Tests.Replication.ReadStream {
 			var events = new Event[] { new Event(Guid.NewGuid(), "test-type", false, new byte[10], new byte[0]) };
 			var writeResult = ReplicationTestHelper.WriteEvent(master, events, _streamId);
 			Assert.AreEqual(OperationResult.Success, writeResult.Result);
-
+			var masterIndex = GetMaster().Db.Config.IndexCheckpoint.Read();
+			var replicas = GetReplicas();
+			AssertEx.IsOrBecomesTrue(()=> replicas[0].Db.Config.IndexCheckpoint.Read() == masterIndex);
+			AssertEx.IsOrBecomesTrue(()=> replicas[1].Db.Config.IndexCheckpoint.Read() == masterIndex);
 			await base.Given();
 		}
 
@@ -78,7 +81,7 @@ namespace EventStore.Core.Tests.Replication.ReadStream {
 
 		[Test]
 		public void should_receive_event_on_slaves() {
-			if (!(_slaveSubscriptions[0].EventAppeared.Wait(2000) && _slaveSubscriptions[1].EventAppeared.Wait(2000))) {
+			if (!(_replicaSubscriptions[0].EventAppeared.Wait(2000) && _replicaSubscriptions[1].EventAppeared.Wait(2000))) {
 				Assert.Fail("Timed out waiting for slave subscriptions to get events");
 			}
 		}

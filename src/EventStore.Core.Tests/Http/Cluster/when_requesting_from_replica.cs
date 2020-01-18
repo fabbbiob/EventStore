@@ -13,9 +13,9 @@ using NUnit.Framework;
 namespace EventStore.Core.Tests.Http.Cluster {
 	[TestFixture]
 	[Category("LongRunning")]
-	public class when_requesting_from_slave : specification_with_cluster {
+	public class when_requesting_from_replica : specification_with_cluster {
 		private const string TestStream = "test-stream";
-		private IPEndPoint _slaveEndPoint;
+		private IPEndPoint _replicaEndPoint;
 		private IPEndPoint _masterEndPoint;
 		private HttpClient _client;
 
@@ -25,10 +25,19 @@ namespace EventStore.Core.Tests.Http.Cluster {
 			
 			// Wait for the admin user to be created before starting our tests
 			await master.AdminUserCreated;
-			Thread.Sleep(100); //allow time for replica node propagation
-			var slave = GetSlaves().First();
-			_slaveEndPoint = slave.ExternalHttpEndPoint;
-			_client = slave.CreateHttpClient();
+			
+			var replica = GetReplicas().First();
+			_replicaEndPoint = replica.ExternalHttpEndPoint;
+			_client = replica.CreateHttpClient();
+
+			var path = $"streams/{TestStream}";
+			var response = await PostEvent(_replicaEndPoint, path, requireMaster: false);
+			Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+			var masterIndex = GetMaster().Db.Config.IndexCheckpoint.Read();
+			var replicas = GetReplicas();
+			AssertEx.IsOrBecomesTrue(()=> replicas[0].Db.Config.IndexCheckpoint.Read() == masterIndex);
+			AssertEx.IsOrBecomesTrue(()=> replicas[1].Db.Config.IndexCheckpoint.Read() == masterIndex);
+
 		}
 
 		public override Task TestFixtureTearDown() {
@@ -39,7 +48,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task post_events_should_succeed_when_master_not_required() {
 			var path = $"streams/{TestStream}";
-			var response = await PostEvent(_slaveEndPoint, path, requireMaster: false);
+			var response = await PostEvent(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
 		}
@@ -47,7 +56,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task delete_stream_should_succeed_when_master_not_required() {
 			var path = $"streams/{TestStream}";
-			var response = await DeleteStream(_slaveEndPoint, path, requireMaster: false);
+			var response = await DeleteStream(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
 		}
@@ -55,7 +64,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task read_from_stream_forward_should_succeed_when_master_not_required() {
 			var path = $"streams/{TestStream}/0/forward/1";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: false);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 		}
@@ -63,7 +72,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task read_from_stream_backward_should_succeed_when_master_not_required() {
 			var path = $"streams/{TestStream}";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: false);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 		}
@@ -71,7 +80,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task read_from_all_forward_should_succeed_when_master_not_required() {
 			var path = $"streams/$all/00000000000000000000000000000000/forward/1";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: false);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 		}
@@ -79,7 +88,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task read_from_all_backward_should_succeed_when_master_not_required() {
 			var path = $"streams/$all";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: false);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: false);
 
 			Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 		}
@@ -87,7 +96,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_writing_with_requires_master() {
 			var path = $"streams/{TestStream}";
-			var response = await PostEvent(_slaveEndPoint, path);
+			var response = await PostEvent(_replicaEndPoint, path);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
@@ -97,7 +106,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_deleting_with_requires_master() {
 			var path = $"streams/{TestStream}";
-			var response = await DeleteStream(_slaveEndPoint, path, requireMaster: true);
+			var response = await DeleteStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
@@ -107,7 +116,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_reading_from_stream_backwards_with_requires_master() {
 			var path = $"streams/{TestStream}";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: true);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
@@ -117,7 +126,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_reading_from_stream_forwards_with_requires_master() {
 			var path = $"streams/{TestStream}/0/forward/1";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: true);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
@@ -127,7 +136,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_reading_from_all_backwards_with_requires_master() {
 			var path = $"streams/$all";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: true);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
@@ -137,7 +146,7 @@ namespace EventStore.Core.Tests.Http.Cluster {
 		[Test]
 		public async Task should_redirect_to_master_when_reading_from_all_forwards_with_requires_master() {
 			var path = $"streams/$all/00000000000000000000000000000000/forward/1";
-			var response = await ReadStream(_slaveEndPoint, path, requireMaster: true);
+			var response = await ReadStream(_replicaEndPoint, path, requireMaster: true);
 
 			Assert.AreEqual(HttpStatusCode.TemporaryRedirect, response.StatusCode);
 			var masterLocation = CreateUri(_masterEndPoint, path);
