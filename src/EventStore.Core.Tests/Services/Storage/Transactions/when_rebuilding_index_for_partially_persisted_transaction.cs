@@ -1,7 +1,4 @@
 using System;
-using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using EventStore.Common.Utils;
 using EventStore.Core.Data;
@@ -15,6 +12,7 @@ using EventStore.Core.TransactionLog.LogRecords;
 using NUnit.Framework;
 using EventStore.Core.Util;
 using EventStore.Core.Index.Hashes;
+// ReSharper disable InconsistentNaming
 
 namespace EventStore.Core.Tests.Services.Storage.Transactions {
 	[TestFixture]
@@ -47,7 +45,8 @@ namespace EventStore.Core.Tests.Services.Storage.Transactions {
 				metastreamMaxCount: 1,
 				hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
 				skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault,
-				replicationCheckpoint: Db.Config.ReplicationCheckpoint);
+				replicationCheckpoint: Db.Config.ReplicationCheckpoint,
+				indexCheckpoint: Db.Config.IndexCheckpoint);
 			((ReadIndex)ReadIndex).IndexCommitter.Init(ChaserCheckpoint.Read());
 		}
 

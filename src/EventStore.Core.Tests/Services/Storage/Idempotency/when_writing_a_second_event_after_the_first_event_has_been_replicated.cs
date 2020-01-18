@@ -2,10 +2,11 @@
 using EventStore.Core.Data;
 using EventStore.Core.Services.Storage.ReaderIndex;
 using NUnit.Framework;
+// ReSharper disable InconsistentNaming
 
 namespace EventStore.Core.Tests.Services.Storage.Idempotency {
 	[TestFixture]
-	public class when_writing_a_second_event_after_the_first_event_has_been_replicated : WriteEventsToIndexScenario{
+	public class when_writing_a_second_event_after_the_first_event_has_been_replicated : write_events_to_index_scenario{
 		private Guid _eventId = Guid.NewGuid();
         public override void WriteEvents()
         {
@@ -28,26 +29,26 @@ namespace EventStore.Core.Tests.Services.Storage.Idempotency {
 		[Test]
 		public void check_commit_with_same_expectedversion_should_return_idempotent_decision() {
 			/*Second, idempotent write*/
-			var commitCheckResult = _indexWriter.CheckCommit("stream", -1, new Guid[] { _eventId });
+			var commitCheckResult = IndexWriter.CheckCommit("stream", -1, new [] { _eventId });
 			Assert.AreEqual(CommitDecision.Idempotent, commitCheckResult.Decision);
 		}
 
 		[Test]
 		public void check_commit_with_expectedversion_any_should_return_idempotent_decision() {
 			/*Second, idempotent write*/
-			var commitCheckResult = _indexWriter.CheckCommit("stream", ExpectedVersion.Any, new Guid[] { _eventId });
+			var commitCheckResult = IndexWriter.CheckCommit("stream", ExpectedVersion.Any, new [] { _eventId });
 			Assert.AreEqual(CommitDecision.Idempotent, commitCheckResult.Decision);
 		}
 
 		[Test]
 		public void check_commit_with_next_expectedversion_should_return_ok_decision() {
-			var commitCheckResult = _indexWriter.CheckCommit("stream", 0, new Guid[] { _eventId });
+			var commitCheckResult = IndexWriter.CheckCommit("stream", 0, new [] { _eventId });
 			Assert.AreEqual(CommitDecision.Ok, commitCheckResult.Decision);
 		}
 
 		[Test]
 		public void check_commit_with_incorrect_expectedversion_should_return_wrongexpectedversion_decision() {
-			var commitCheckResult = _indexWriter.CheckCommit("stream", 1, new Guid[] { _eventId });
+			var commitCheckResult = IndexWriter.CheckCommit("stream", 1, new [] { _eventId });
 			Assert.AreEqual(CommitDecision.WrongExpectedVersion, commitCheckResult.Decision);
 		}
     }

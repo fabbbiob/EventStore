@@ -100,6 +100,7 @@ namespace EventStore.Core.Tests.Services.Storage.BuildingIndex {
 
 			var writerCheckpoint = new InMemoryCheckpoint(0);
 			var chaserCheckpoint = new InMemoryCheckpoint(0);
+			var indexCheckpoint = new InMemoryCheckpoint(0);
 
 			var bus = new InMemoryBus("bus");
 			new IODispatcher(bus, new PublishEnvelope(bus));
@@ -138,7 +139,8 @@ namespace EventStore.Core.Tests.Services.Storage.BuildingIndex {
 				metastreamMaxCount: MetastreamMaxCount,
 				hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
 				skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault,
-				replicationCheckpoint: _db.Config.ReplicationCheckpoint);
+				replicationCheckpoint: _db.Config.ReplicationCheckpoint,
+				indexCheckpoint: _db.Config.IndexCheckpoint);
 
 
 			((ReadIndex)ReadIndex).IndexCommitter.Init(chaserCheckpoint.Read());
@@ -171,7 +173,8 @@ namespace EventStore.Core.Tests.Services.Storage.BuildingIndex {
 				metastreamMaxCount: MetastreamMaxCount,
 				hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
 				skipIndexScanOnReads: Opts.SkipIndexScanOnReadsDefault,
-				replicationCheckpoint: _db.Config.ReplicationCheckpoint);
+				replicationCheckpoint: _db.Config.ReplicationCheckpoint,
+				indexCheckpoint: _db.Config.IndexCheckpoint);
 
 			((ReadIndex)ReadIndex).IndexCommitter.Init(chaserCheckpoint.Read());
 		}
