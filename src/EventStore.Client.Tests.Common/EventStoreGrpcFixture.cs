@@ -74,6 +74,7 @@ namespace EventStore.Client {
 			Client?.Dispose();
 		}
 
+
 		public string GetStreamName([CallerMemberName] string testMethod = default) {
 			var type = GetType();
 
